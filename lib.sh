@@ -102,6 +102,22 @@ wait_for_ip() {
     return 1
 }
 
+# resolve_ip -- establish the VM's IP and cache it to $STATE/vm-ip, or die. This is
+# the SINGLE place the control scripts satisfy ssh_vm's "vm-ip holds the IP"
+# precondition: take the live IP (find_ip), else the last cached value, else give
+# up. Unlike a bare find_ip it also guards find_ip's empty-but-success case (MAC
+# known but no ARP neighbor yet), which would otherwise leave vm-ip blank.
+#   Pre:  VM_NAME defined; STATIC_IP set, or the VM is up + discoverable, or a
+#         prior run cached $STATE/vm-ip.
+#   Post: echoes the IP, writes it to $STATE/vm-ip, returns 0; dies if none found.
+resolve_ip() {
+    local ip
+    ip=$(find_ip || cat "$STATE/vm-ip" 2>/dev/null) || true
+    [ -n "$ip" ] || die "VM IP unknown (is it running? try ./status.sh)"
+    echo "$ip" > "$STATE/vm-ip"
+    echo "$ip"
+}
+
 # ssh_vm -- run a command in the VM with the appliance's bin dir on PATH. `ssh host
 # cmd` uses a NON-login shell that does not read the login profile, so ~/.dune/bin
 # (where `battlegroup` lives) is off PATH and the command comes back "not found".
