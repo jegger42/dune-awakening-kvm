@@ -15,6 +15,22 @@ world on a bridged LAN VM.
 > are trademarks of their respective owners, used here only to describe what this
 > tool interoperates with.*
 
+## Alternatives
+
+Want a managed control panel or a lighter, container-native setup? Use
+**[AMP by CubeCoders](https://cubecoders.com/AMP/Dune)**, which now runs the Dune:
+Awakening server on normal Linux with **no Hyper-V or VM at all** -- it extracts the
+underlying server and runs it directly under Docker/Podman. It is the more polished,
+fuller-featured option, and the right pick if you want a panel or the lightest footprint.
+
+This launcher takes the opposite tradeoff on purpose: it boots Funcom's shipped
+appliance **as-is** under KVM instead of re-packaging it. That keeps it a single,
+dependency-light script with near-zero maintenance and robustness to vendor updates
+(drop in a new `.vhdx`, re-run, done), at the cost of running the heavier appliance
+stack (the embedded k3s and friends). Pick this if you want a free, no-panel launcher
+that runs the exact vendor-supported image; pick AMP if you want a managed panel or
+the smallest footprint.
+
 ## Requirements
 
 - A 64-bit x86 CPU with **AVX2** (the server binary needs it; the VM uses host-CPU
@@ -132,6 +148,30 @@ Once `./start.sh` reports the world is up, launch Dune: Awakening, open the
   - **31982 TCP** -- RMQ (the server's message broker)
 
   These follow Funcom's [official self-hosted-server instructions](https://duneawakening.com/self-hosted-servers/). The starting ports are configurable on the server (the `Port` / `IGWPort` options); if you change them, adjust your forwarding to match.
+
+## Security
+
+The threat model in one place. The appliance itself is Funcom's; this covers how the
+launcher runs it:
+
+- **A unique SSH key per install.** `launch.sh` generates a fresh `ed25519` keypair
+  and installs it, so there is no shared key baked across deployments. (Funcom's
+  appliance still ships a default `dune` account password, used once to install the
+  key, so do not expose the VM's SSH to the internet.)
+- **LAN-only by default.** Bridge mode gives the VM a real *LAN* IP, not a public one.
+  The server is reachable only from your own network unless you deliberately
+  port-forward on your router.
+- **Minimal exposure if you go remote.** Forward only the game ports
+  (`7777-7810/udp` + `31982/tcp`), never the whole VM and never SSH. See
+  [Connect from the game](#connect-from-the-game).
+- **The appliance internals are Funcom's** (the embedded k3s, bundled services). This
+  launcher runs the image as shipped; it does not harden those internals, so keep the
+  VM network-isolated. For extra isolation run `NET_MODE=macvtap`, or put the bridge
+  on a separate VLAN so the VM cannot reach the rest of your network.
+
+Short version: unique key, LAN-only by default, minimal ports if remote. Hardening the
+server beyond the network boundary is a Funcom-image concern, not something a launcher
+can fix, so run it isolated.
 
 ## Settings
 
