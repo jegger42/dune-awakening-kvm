@@ -1,0 +1,6 @@
+# Vendor appliance disk -- you supply your own; never redistributed
+appliance/*.vhdx
+appliance/*.vhd
+*.qcow2
+# local state (ssh key, discovered IP)
+state/
