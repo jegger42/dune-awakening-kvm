@@ -3,6 +3,13 @@
 # Dune Awakening server on KVM. Convert -> resize -> define (UEFI no-secureboot,
 # host-CPU, bridged) -> boot -> install ssh key -> run first-run (disk grow,
 # steam payload pull, vendor world setup). One command, host-side, as root.
+#   Pre:  run as root; a *.vhdx in $APPLIANCE_DIR (or VHDX=path); the host tools
+#         in the preflight list installed; a usable bridge ($BRIDGE) or macvtap
+#         NIC; no existing libvirt domain named $VM_NAME.
+#   Post: a running, network-reachable VM with the SSH key installed and the
+#         interactive first-run completed (world created). $STATE/vm-ip holds the
+#         IP. Idempotent on the qcow2 (prompts to reuse an existing disk/world);
+#         dies with a friendly reason on any unmet precondition.
 source "$(dirname "$0")/lib.sh"
 require_root
 

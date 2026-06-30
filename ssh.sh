@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 # Open a shell in the VM (or run a battlegroup command: ./ssh.sh battlegroup status)
+#   Pre:  run as root; the VM is up and the SSH key is installed (via launch.sh).
+#   Post: with args, runs them in the VM and exits with their status; with no
+#         args, hands over an interactive login shell. Refreshes $STATE/vm-ip.
 source "$(dirname "$0")/lib.sh"; require_root
 ip=$(find_ip || cat "$STATE/vm-ip" 2>/dev/null) || die "VM IP unknown (is it running?)"
 echo "$ip" > "$STATE/vm-ip"
