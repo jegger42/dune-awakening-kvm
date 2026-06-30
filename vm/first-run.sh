@@ -27,13 +27,13 @@ else
     echo "   skip (already $(echo "$avail")G free)"
 fi
 
-echo "== [2/4] persist DHCP on eth0 (so the IP survives reboots) =="
-if ! grep -q 'iface eth0 inet dhcp' /etc/network/interfaces 2>/dev/null; then
+echo "== [2/4] ensure eth0 persists (keep a pre-seeded static; only default to DHCP if unset) =="
+if ! grep -q 'iface eth0 inet' /etc/network/interfaces 2>/dev/null; then
     printf 'auto lo\niface lo inet loopback\n\nauto eth0\niface eth0 inet dhcp\n' \
         | sudo tee /etc/network/interfaces >/dev/null
-    echo "   wrote /etc/network/interfaces"
+    echo "   wrote /etc/network/interfaces (DHCP default)"
 else
-    echo "   already configured"
+    echo "   already configured (kept -- preserves a static pre-seed)"
 fi
 
 echo "== [3/4] fetch the vendor payload via the appliance's own steamcmd (anonymous) =="

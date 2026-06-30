@@ -30,7 +30,7 @@ VIRSH=(virsh -c qemu:///system)
 SSH_OPTS=(-o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o LogLevel=ERROR)
 
 red()  { printf '\033[31m%s\033[0m\n' "$*" >&2; }
-cyan() { printf '\033[36m%s\033[0m\n' "$*"; }
+cyan() { printf '\033[36m%s\033[0m\n' "$*" >&2; }  # status -> stderr, so $(...) captures (e.g. IP=$(wait_for_ip)) never swallow it
 die()  { red "ERROR: $*"; exit 1; }
 require_root() { [ "$(id -u)" -eq 0 ] || die "run with sudo (system libvirt + image pool)"; }
 
@@ -64,15 +64,24 @@ find_ip() {
 
 # Wait up to N seconds for the VM to become reachable. With STATIC_IP, poll ping
 # (the address is known; we just wait for it to come up). Else discover via DHCP.
+# sshd ready? The appliance answers ping/has an IP before sshd is listening, so gate
+# on the port being open, not just reachability -- otherwise the first key-install
+# ssh races the boot and dies with "Connection refused".
+ssh_up() { timeout 2 bash -c ": </dev/tcp/$1/22" 2>/dev/null; }
+
 wait_for_ip() {
     local t="${1:-180}" ip
     if [ -n "$STATIC_IP" ]; then
-        cyan "waiting for VM at static $STATIC_IP to respond (up to ${t}s)..."
-        for ((i=0;i<t;i+=3)); do ping -c1 -W1 "$STATIC_IP" >/dev/null 2>&1 && { echo "$STATIC_IP"; return 0; }; sleep 3; done
+        cyan "waiting for VM at static $STATIC_IP (network + sshd, up to ${t}s)..."
+        for ((i=0;i<t;i+=3)); do ssh_up "$STATIC_IP" && { echo "$STATIC_IP"; return 0; }; sleep 3; done
         return 1
     fi
-    cyan "waiting for the VM to get a LAN IP (up to ${t}s)..."
-    for ((i=0;i<t;i+=3)); do ip=$(find_ip || true); [ -n "$ip" ] && { echo "$ip"; return 0; }; sleep 3; done
+    cyan "waiting for the VM to get a LAN IP + sshd (up to ${t}s)..."
+    for ((i=0;i<t;i+=3)); do
+        ip=$(find_ip || true)
+        [ -n "$ip" ] && ssh_up "$ip" && { echo "$ip"; return 0; }
+        sleep 3
+    done
     return 1
 }
 
